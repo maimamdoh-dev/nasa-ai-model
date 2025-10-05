@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kepler KOI Prediction System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #0d1117;
+            direction: ltr;
+        }
+        h1, h2 {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .neon-glow {
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+            transition: all 0.3s ease-in-out;
+        }
+        .neon-text {
+            color: #00FFFF;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+        input[type="text"], input[type="number"], select {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.7);
+            transition: all 0.3s ease-in-out;
+            text-align: left;
+        }
+        input:focus, select:focus {
+            border-color: #00FFFF;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.6), inset 0 1px 4px rgba(0, 0, 0, 0.7);
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            color: #c9d1d9;
+        }
+        .input-grid {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        @media (min-width: 768px) {
+            .input-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (min-width: 1024px) {
+            .input-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00FFFF;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .info-icon {
+            cursor: help;
+            position: relative;
+            display: inline-block;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+        .info-icon:hover {
+            color: #fff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        }
+        .info-icon {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        /* Tooltip content defined by ::after pseudo-element */
+        .info-icon::after {
+            content: attr(data-tooltip-content); /* CRITICAL: Pulls text from the attribute */
+            position: absolute;
+            /* Position above the icon, slightly to the right */
+            bottom: 150%; 
+            left: 50%;
+            transform: translateX(-50%) translateY(-4px); 
+            
+            /* Styling and layout */
+            background-color: #1f2937; /* Dark gray background */
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500;
+            white-space: normal; /* Allow text to wrap */
+            width: max-content;
+            max-width: 250px; /* Limit width on smaller screens */
+            text-align: left;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            z-index: 50; /* Ensure it is on top */
+
+            /* Hide by default with transition */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none; /* Allows the mouse to not interact with the hidden box */
+        }
+
+        /* Arrow/Tail (optional, but good) */
+        .info-icon::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-2px);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #1f2937; /* Matches background color */
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        /* Show on hover (The key to making the tooltip appear) */
+        .info-icon:hover::after, 
+        .info-icon:hover::before {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0); /* Move slightly down when visible */
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+    <div class="min-h-screen p-4 md:p-8">
+        <header class="text-center mb-12 border-b-2 border-cyan-600 pb-4">
+            <div class="flex justify-center items-center">
+                <svg class="w-10 h-10 text-cyan-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 8a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1zM5 13a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zm10 0a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z"/></svg>
+                <h1 class="text-4xl md:text-5xl font-bold text-cyan-400 neon-text ml-3">Kepler KOI Prediction System</h1>
+            </div>
+            <p class="text-lg mt-2 text-gray-400">AI-Powered Exoplanet Classification (116 Parameters)</p>
+        </header>
+        
+        <!-- Results Section -->
+        <div id="results-section" class="hidden max-w-4xl mx-auto mb-8 p-6 bg-[#161b22] rounded-xl border-2 border-cyan-500 neon-glow">
+            <h2 class="text-3xl font-semibold text-cyan-400 mb-4">Prediction Results</h2>
+            <div id="results-content"></div>
+        </div>
+
+        <main class="max-w-7xl mx-auto">
+            <form id="mission-data-form" class="space-y-10">
+                
+                <section class="p-6 bg-[#161b22] rounded-xl border border-gray-700 neon-glow/50">
+                    <h2 class="text-3xl font-semibold text-orange-400 mb-6 border-b border-gray-600 pb-2">All KOI Parameters</h2>
+                    <div class="input-grid grid gap-6">
+                        
+                        <div class="input-group"><label for="koi_vet_stat">Vetting Status  <span class="info-icon text-cyan-400" data-tooltip-content="Orbit Semi-Major Axis: The average distance between the planet and its host star [Astronomical Units (AU)]. Example: 0.574.">(i)</span></label>
+                        <select id="koi_vet_stat" name="koi_vet_stat" required>
+                            <option value="">Select Status</option>
+                            <option value="Active">Active</option>
+                            <option value="Done">Done</option>
+                        </select></div>
+                     
+                        <div class="input-group"><label for="koi_vet_date"> Date of Last Parameter Update <span class="info-icon text-cyan-400" data-tooltip-content="Date of Last Parameter Update: Date of the most recent parameter update (Format: YYYY-MM-DD). Example: 2018-08-16.">(i)</span></label><input step="any" type="text" id="koi_vet_date" name="koi_vet_date" placeholder="e.g., 2018-08-16"></div>
+                        
+                        <div class="input-group"><label for="koi_pdisposition"> Disposition Using Kepler Data <span class="info-icon text-cyan-400" data-tooltip-content="Disposition Using Kepler Data: The final disposition of the KOI based on Kepler data (CANDIDATE, CONFIRMED, or FALSE POSITIVE). Example: CANDIDATE.">(i)</span></label><input step="any" type="text" id="koi_pdisposition" name="koi_pdisposition" placeholder="e.g., CANDIDATE" required></div>
+                        
+                        <div class="input-group"><label for="koi_fpflag_nt"> Not Transit-Like False Positive Flag <span class="info-icon text-cyan-400" data-tooltip-content="Not Transit-Like False Positive Flag: A flag (0 or 1) indicating if the signal is V-shaped, long duration, or otherwise not transit-like. Example: 0.">(i)</span></label><select id="koi_fpflag_nt" name="koi_fpflag_nt"><option value="0">0 (No)</option><option value="1">1 (Yes)</option></select></div>
+                        
+                        <div class="input-group"><label for="koi_fpflag_ss"> Stellar Eclipse False Positive Flag <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Eclipse False Positive Flag: A flag (0 or 1) indicating a possible stellar eclipse in an eclipsing binary system. Example: 0.">(i)</span></label><select id="koi_fpflag_ss" name="koi_fpflag_ss"><option value="0">0 (No)</option><option value="1">1 (Yes)</option></select></div>
+                        
+                        <div class="input-group"><label for="koi_fpflag_co"> Centroid Offset False Positive Flag <span class="info-icon text-cyan-400" data-tooltip-content="Centroid Offset False Positive Flag: A flag (0 or 1) indicating a significant centroid offset during transit, pointing to a nearby background source. Example: 0.">(i)</span></label><select id="koi_fpflag_co" name="koi_fpflag_co"><option value="0">0 (No)</option><option value="1">1 (Yes)</option></select></div>
+                        
+                        <div class="input-group"><label for="koi_fpflag_ec"> Ephemeris Match Indicates Contamination Flag <span class="info-icon text-cyan-400" data-tooltip-content="Ephemeris Match Indicates Contamination Flag: A flag (0 or 1) indicating a signal from a nearby eclipsing binary that matches the KOI period. Example: 0.">(i)</span></label><select id="koi_fpflag_ec" name="koi_fpflag_ec"><option value="0">0 (No)</option><option value="1">1 (Yes)</option></select></div>
+                        
+                        <div class="input-group"><label for="koi_disp_prov"> Disposition Provenance <span class="info-icon text-cyan-400" data-tooltip-content="Disposition Provenance: Source of the disposition value (e.g., q1_q17_dr25_sup_koi). Example: q1_q17_dr25_sup_koi.">(i)</span></label><input step="any" type="text" id="koi_disp_prov" name="koi_disp_prov" placeholder="e.g., q1_q17_dr25_sup_koi"></div>
+                        
+                        <div class="input-group"><label for="koi_comment"> Vetting Comment <span class="info-icon text-cyan-400" data-tooltip-content="Comment: Vetting comment or flag, often indicating a V-shape, secondary eclipse, etc. Example: DEEP_V_SHAPED.">(i)</span></label><input step="any" type="text" id="koi_comment" name="koi_comment" placeholder="e.g., DEEP_V_SHAPED"></div>
+                        
+                        <div class="input-group"><label for="koi_period"> Orbital Period [days] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_period" name="koi_period" placeholder="e.g., 0.681" required></div>
+                        
+                        <div class="input-group"><label for="koi_period_err1"> Orbital Period Upper Unc. [days] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_period_err1" name="koi_period_err1" placeholder="e.g., 0.00000205"></div>
+                        
+                        <div class="input-group"><label for="koi_period_err2"> Orbital Period Lower Unc. [days] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_period_err2" name="koi_period_err2" placeholder="e.g., -0.0000105"></div>
+                        
+                        <div class="input-group"><label for="koi_time0bk"> Transit Epoch [BKJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0bk" name="koi_time0bk" placeholder="e.g., 175.850252" required></div>
+                        
+                        <div class="input-group"><label for="koi_time0bk_err1"> Transit Epoch Upper Unc. [BKJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0bk_err1" name="koi_time0bk_err1" placeholder="e.g., 0.000054"></div>
+                        
+                        <div class="input-group"><label for="koi_time0bk_err2"> Transit Epoch Lower Unc. [BKJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0bk_err2" name="koi_time0bk_err2" placeholder="e.g., -0.0000151"></div>
+                        
+                        <div class="input-group"><label for="koi_time0"> Transit Epoch [BJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0" name="koi_time0"  placeholder="e.g., 2455003.308"></div>
+                        
+                        <div class="input-group"><label for="koi_time0_err1">Transit Epoch Upper Unc. [BJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0_err1" name="koi_time0_err1" placeholder="e.g., 0.000045"></div>
+                        
+                        <div class="input-group"><label for="koi_time0_err2">Transit Epoch Lower Unc. [BJD] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_time0_err2" name="koi_time0_err2" placeholder="e.g., -0.0000517"></div>
+                        
+                        <div class="input-group"><label for="koi_eccen"> Orbital Eccentricity <span class="info-icon text-cyan-400" data-tooltip-content="Orbital Eccentricity: The degree to which the orbit deviates from a perfect circle. Example: 0.015.">(i)</span></label><input step="any" type="number" id="koi_eccen" name="koi_eccen" placeholder="e.g., 0.015"></div>
+                        
+                        <div class="input-group"><label for="koi_impact">Impact Parameter <span class="info-icon text-cyan-400" data-tooltip-content="Impact Parameter: The projected distance between the center of the star and the center of the planet's disk in units of the stellar radius. Example: 0.685.">(i)</span></label><input step="any" type="number" id="koi_impact" name="koi_impact" placeholder="e.g., 0.685" required></div>
+                        
+                        <div class="input-group"><label for="koi_impact_err1"> Impact Parameter Upper Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Impact Parameter Upper Unc.: The +1 sigma uncertainty in the impact parameter. Example: 0.65.">(i)</span></label><input step="any" type="number" id="koi_impact_err1" name="koi_impact_err1" placeholder="e.g., 0.65"></div>
+                        
+                        <div class="input-group"><label for="koi_impact_err2"> Impact Parameter Lower Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Impact Parameter Lower Unc.: The -1 sigma uncertainty in the impact parameter. Example: -0.15.">(i)</span></label><input step="any" type="number" id="koi_impact_err2" name="koi_impact_err2" placeholder="e.g., -0.15"></div>
+                        
+                        <div class="input-group"><label for="koi_duration"> Transit Duration [hrs] <span class="info-icon text-cyan-400" data-tooltip-content="Transit Duration: The total time from the first to the fourth contact of the transit [hours]. Example: 26.6825.">(i)</span></label><input step="any" type="number" id="koi_duration" name="koi_duration" placeholder="e.g., 26.6825" required></div>
+                        
+                        <div class="input-group"><label for="koi_duration_err1"> Transit Duration Upper Unc. [hrs] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_duration_err1" name="koi_duration_err1" placeholder="e.g., 0.659"></div>
+                        
+                        <div class="input-group"><label for="koi_duration_err2"> Transit Duration Lower Unc. [hrs] <span class="text-cyan-400 hover:text-cyan-600 transition-colors duration-300">(i) </span></label><input step="any" type="number" id="koi_duration_err2" name="koi_duration_err2" placeholder="e.g., -0.035"></div>
+                        
+                        <div class="input-group"><label for="koi_depth">Transit Depth [ppm] <span class="info-icon text-cyan-400" data-tooltip-content="Transit Depth: The drop in flux during transit, measured from the full transit model [parts per million (ppm)]. Example: 8080.">(i)</span></label><input step="any" type="number" id="koi_depth" name="koi_depth" placeholder="e.g., 8080" required></div>
+                        
+                        <div class="input-group"><label for="koi_depth_err1"> Transit Depth Upper Unc. [ppm] <span class="info-icon text-cyan-400" data-tooltip-content="Transit Depth Upper Unc.: The +1 sigma uncertainty in the transit depth [ppm]. Example: 19.5.">(i)</span></label><input step="any" type="number" id="koi_depth_err1" name="koi_depth_err1" placeholder="e.g., 19.5"></div>
+                        
+                        <div class="input-group"><label for="koi_depth_err2"> Transit Depth Lower Unc. [ppm] <span class="info-icon text-cyan-400" data-tooltip-content="Transit Depth Lower Unc.: The -1 sigma uncertainty in the transit depth [ppm]. Example: -5.8.">(i)</span></label><input step="any" type="number" id="koi_depth_err2" name="koi_depth_err2" placeholder="e.g., -5.8"></div>
+                        
+                        <div class="input-group"><label for="koi_ror"> Planet-Star Radius Ratio <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Radius Ratio: The ratio of the planetary radius to the stellar radius ($R_p/R_*$). Example: 0.387394.">(i)</span></label><input step="any" type="number" id="koi_ror" name="koi_ror" placeholder="e.g., 0.387394" required></div>
+                        
+                        <div class="input-group"><label for="koi_ror_err1"> Planet-Star Radius Ratio Upper Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Radius Ratio Upper Unc.: The +1 sigma uncertainty in the radius ratio. Example: 5.03.">(i)</span></label><input step="any" type="number" id="koi_ror_err1" name="koi_ror_err1" placeholder="e.g., 5.03"></div>
+                        
+                        <div class="input-group"><label for="koi_ror_err2"> Planet-Star Radius Ratio Lower Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Radius Ratio Lower Unc.: The -1 sigma uncertainty in the radius ratio. Example: -403.">(i)</span></label><input step="any" type="number" id="koi_ror_err2" name="koi_ror_err2" placeholder="e.g., -403"></div>
+                        
+                        <div class="input-group"><label for="koi_srho"> Fitted Stellar Density [g/cm³] <span class="info-icon text-cyan-400" data-tooltip-content="Fitted Stellar Density: The density of the host star derived from the transit fit, assuming a circular orbit [grams per cubic centimeter (g/cm³)]. Example: 3.82.">(i)</span></label><input step="any" type="number" id="koi_srho" name="koi_srho" placeholder="e.g., 3.82" required></div>
+                        
+                        <div class="input-group"><label for="koi_srho_err1"> Fitted Stellar Density Upper Unc. [g/cm³] <span class="info-icon text-cyan-400" data-tooltip-content="Fitted Stellar Density Upper Unc.: The +1 sigma uncertainty in the stellar density [g/cm³]. Example: 0.684.">(i)</span></label><input step="any" type="number" id="koi_srho_err1" name="koi_srho_err1" placeholder="e.g., 0.684"></div>
+                        
+                        <div class="input-group"><label for="koi_srho_err2"> Fitted Stellar Density Lower Unc. [g/cm³] <span class="info-icon text-cyan-400" data-tooltip-content="Fitted Stellar Density Lower Unc.: The -1 sigma uncertainty in the stellar density [g/cm³]. Example: -0.6811.">(i)</span></label><input step="any" type="number" id="koi_srho_err2" name="koi_srho_err2" placeholder="e.g., -0.6811"></div>
+                        
+                        <div class="input-group"><label for="koi_fittype"> Planetary Fit Type <span class="info-icon text-cyan-400" data-tooltip-content="Planetary Fit Type: Method used for fitting the planetary parameters (e.g., LS+MCMC, DR25). Example: LS+MCMC.">(i)</span></label><input step="any" type="text" id="koi_fittype" name="koi_fittype" placeholder="e.g., LS+MCMC"></div>
+                        
+                        <div class="input-group"><label for="koi_prad"> Planetary Radius [Earth radii] <span class="info-icon text-cyan-400" data-tooltip-content="Planetary Radius: The radius of the planet [Earth radii ($R_{Earth}$)]. Example: 1.5.">(i)</span></label><input step="any" type="number" id="koi_prad" name="koi_prad" placeholder="e.g., 1.5" required></div>
+                        
+                        <div class="input-group"><label for="koi_prad_err1"> Planetary Radius Upper Unc. [Earth radii] <span class="info-icon text-cyan-400" data-tooltip-content="Planetary Radius Upper Unc.: The +1 sigma uncertainty in the planetary radius [Earth radii]. Example: 3.92.">(i)</span></label><input step="any" type="number" id="koi_prad_err1" name="koi_prad_err1" placeholder="e.g., 3.92"></div>
+                        
+                        <div class="input-group"><label for="koi_prad_err2">Planetary Radius Lower Unc. [Earth radii] <span class="info-icon text-cyan-400" data-tooltip-content="Planetary Radius Lower Unc.: The -1 sigma uncertainty in the planetary radius [Earth radii]. Example: -0.25.">(i)</span></label><input step="any" type="number" id="koi_prad_err2" name="koi_prad_err2" placeholder="e.g., -0.25"></div>
+                        
+                        <div class="input-group"><label for="koi_sma"> Orbit Semi-Major Axis [AU] <span class="info-icon text-cyan-400" data-tooltip-content="Orbit Semi-Major Axis: The average distance between the planet and its host star [Astronomical Units (AU)]. Example: 0.574.">(i)</span></label><input step="any" type="number" id="koi_sma" name="koi_sma" placeholder="e.g., 0.574" required></div>
+                        
+                        <div class="input-group"><label for="koi_incl"> Orbital Inclination [deg] <span class="info-icon text-cyan-400" data-tooltip-content="Orbital Inclination: The angle of the orbital plane with respect to the plane of the sky [degrees]. Example: 88.65.">(i)</span></label><input step="any" type="number" id="koi_incl" name="koi_incl" placeholder="e.g., 88.65"></div>
+                        
+                        <div class="input-group"><label for="koi_teq"> Equilibrium Temperature [K] <span class="info-icon text-cyan-400" data-tooltip-content="Equilibrium Temperature: The predicted temperature of the planet assuming a blackbody and uniform heat distribution [Kelvin (K)]. Example: 1160.">(i)</span></label><input step="any" type="number" id="koi_teq" name="koi_teq" placeholder="e.g., 1160" required></div>
+                        
+                        <div class="input-group"><label for="koi_insol"> Insolation Flux [Earth flux] <span class="info-icon text-cyan-400" data-tooltip-content="Insolation Flux: The amount of stellar light incident upon the planet, relative to Earth's insolation [Earth Flux ($F_{Earth}$)]. Example: 427.35.">(i)</span></label><input step="any" type="number" id="koi_insol" name="koi_insol" placeholder="e.g., 427.35" required></div>
+                        
+                        <div class="input-group"><label for="koi_insol_err1"> Insolation Flux Upper Unc. [Earth flux] <span class="info-icon text-cyan-400" data-tooltip-content="Insolation Flux Upper Unc.: The +1 sigma uncertainty in the insolation flux [Earth Flux]. Example: 35.99.">(i)</span></label><input step="any" type="number" id="koi_insol_err1" name="koi_insol_err1" placeholder="e.g., 35.99"></div>
+                        
+                        <div class="input-group"><label for="koi_insol_err2"> Insolation Flux Lower Unc. [Earth flux] <span class="info-icon text-cyan-400" data-tooltip-content="Insolation Flux Lower Unc.: The -1 sigma uncertainty in the insolation flux [Earth Flux]. Example: -94.14.">(i)</span></label><input step="any" type="number" id="koi_insol_err2" name="koi_insol_err2" placeholder="e.g., -94.14"></div>
+                        
+                        <div class="input-group"><label for="koi_dor">Planet-Star Distance over Star Radius ($a/R_*$) <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Distance over Star Radius ($a/R_*$): The ratio of the orbit semi-major axis to the stellar radius. Example: 8.3367.">(i)</span></label><input step="any" type="number" id="koi_dor" name="koi_dor" placeholder="e.g., 8.3367" required></div>
+                        
+                        <div class="input-group"><label for="koi_dor_err1"> ($a/R_*$) Upper Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Distance over Star Radius Upper Unc.: The +1 sigma uncertainty in the $a/R_*$ ratio. Example: 1.2.">(i)</span></label><input step="any" type="number" id="koi_dor_err1" name="koi_dor_err1" placeholder="e.g., 1.2"></div>
+                        
+                        <div class="input-group"><label for="koi_dor_err2"> ($a/R_*$) Lower Unc. <span class="info-icon text-cyan-400" data-tooltip-content="Planet-Star Distance over Star Radius Lower Unc.: The -1 sigma uncertainty in the $a/R_*$ ratio. Example: -1.547.">(i)</span></label><input step="any" type="number" id="koi_dor_err2" name="koi_dor_err2" placeholder="e.g., -1.547"></div>
+                        
+                        <div class="input-group"><label for="koi_limbdark_mod"> Limb Darkening Model <span class="info-icon text-cyan-400" data-tooltip-content="Limb Darkening Model: The stellar atmosphere model used to calculate the limb darkening coefficients (e.g., Claret ATLAS LS). Example: Claret ATLAS LS.">(i)</span></label><input step="any" type="text" id="koi_limbdark_mod" name="koi_limbdark_mod" placeholder="e.g., Claret ATLAS LS"></div>
+                        
+                        <div class="input-group"><label for="koi_ldm_coeff4"> Limb Darkening Coeff. 4 <span class="info-icon text-cyan-400" data-tooltip-content="Limb Darkening Coeff. 4: Fourth coefficient of the four-parameter limb darkening law. Example: 0.25.">(i)</span></label><input step="any" type="number" id="koi_ldm_coeff4" name="koi_ldm_coeff4" placeholder="e.g., 0.25"></div>
+                        
+                        <div class="input-group"><label for="koi_ldm_coeff3">Limb Darkening Coeff. 3 <span class="info-icon text-cyan-400" data-tooltip-content="Limb Darkening Coeff. 3: Third coefficient of the four-parameter limb darkening law. Example: 0.021.">(i)</span></label><input step="any" type="number" id="koi_ldm_coeff3" name="koi_ldm_coeff3" placeholder="e.g., 0.021"></div>
+                        
+                        <div class="input-group"><label for="koi_ldm_coeff2"> Limb Darkening Coeff. 2 <span class="info-icon text-cyan-400" data-tooltip-content="Limb Darkening Coeff. 2: Second coefficient of the four-parameter limb darkening law. Example: 0.229.">(i)</span></label><input step="any" type="number" id="koi_ldm_coeff2" name="koi_ldm_coeff2" placeholder="e.g., 0.229"></div>
+                        
+                        <div class="input-group"><label for="koi_ldm_coeff1"> Limb Darkening Coeff. 1 <span class="info-icon text-cyan-400" data-tooltip-content="Limb Darkening Coeff. 1: First coefficient of the four-parameter limb darkening law. Example: 0.489.">(i)</span></label><input step="any" type="number" id="koi_ldm_coeff1" name="koi_ldm_coeff1" placeholder="e.g., 0.489"></div>
+                        
+                        <div class="input-group"><label for="koi_parm_prov"> Parameters Provenance <span class="info-icon text-cyan-400" data-tooltip-content="Parameters Provenance: Source of the planetary transit parameters (e.g., q1_q17_dr25_koi). Example: q1_q17_dr25_koi.">(i)</span></label><input step="any" type="text" id="koi_parm_prov" name="koi_parm_prov" placeholder="e.g., q1_q17_dr25_koi"></div>
+                        
+                        <div class="input-group"><label for="koi_max_sngle_ev">Maximum Single Event Statistic (SES) <span class="info-icon text-cyan-400" data-tooltip-content="Maximum Single Event Statistic (SES): The maximum signal-to-noise ratio for any single transit. Example: 862.258.">(i)</span></label><input step="any" type="number" id="koi_max_sngle_ev" name="koi_max_sngle_ev" placeholder="e.g., 862.258"></div>
+                        
+                        <div class="input-group"><label for="koi_max_mult_ev">Maximum Multiple Event Statistic (MES) <span class="info-icon text-cyan-400" data-tooltip-content="Maximum Multiple Event Statistic (MES): The maximum signal-to-noise ratio summed over all transits. Example: 96.247.">(i)</span></label><input step="any" type="number" id="koi_max_mult_ev" name="koi_max_mult_ev" placeholder="e.g., 96.247"></div>
+                        
+                        <div class="input-group"><label for="koi_model_snr"> Transit Signal-to-Noise Ratio (Model) <span class="info-icon text-cyan-400" data-tooltip-content="Transit Signal-to-Noise Ratio (Model): The total transit signal-to-noise ratio based on the fitted model. Example: 25.04.">(i)</span></label><input step="any" type="number" id="koi_model_snr" name="koi_model_snr" placeholder="e.g., 25.04" required></div>
+                        
+                        <div class="input-group"><label for="koi_count"> Number of Planets <span class="info-icon text-cyan-400" data-tooltip-content="Number of Planets: The number of planets/KOIs associated with this Kepler star. Example: 5.">(i)</span></label><input step="any" type="number" id="koi_count" name="koi_count" placeholder="e.g., 5"></div>
+                        
+                        <div class="input-group"><label for="koi_num_transits"> Number of Transits <span class="info-icon text-cyan-400" data-tooltip-content="Number of Transits: The total number of observed transits used in the fit. Example: 621.">(i)</span></label><input step="any" type="number" id="koi_num_transits" name="koi_num_transits" placeholder="e.g., 621" required></div>
+                        
+                        <div class="input-group"><label for="koi_tce_plnt_num">TCE Planet Number <span class="info-icon text-cyan-400" data-tooltip-content="TCE Planet Number: The planet number associated with the Transit Candidate Event (TCE). Example: 1.">(i)</span></label><input step="any" type="number" id="koi_tce_plnt_num" name="koi_tce_plnt_num" placeholder="e.g., 1" required></div>
+                        
+                        <div class="input-group"><label for="koi_tce_delivname"> TCE Delivery Name <span class="info-icon text-cyan-400" data-tooltip-content="TCE Delivery Name: The specific delivery of the TCE data (e.g., q1_q17_dr25_tce). Example: q1_q17_dr25_tce.">(i)</span></label><input step="any" type="text" id="koi_tce_delivname" name="koi_tce_delivname" placeholder="e.g., q1_q17_dr25_tce"></div>
+                        
+                        <div class="input-group"><label for="koi_quarters">Quarters Observed <span class="info-icon text-cyan-400" data-tooltip-content="Quarters Observed: A bit string indicating the Kepler quarters (1-17) during which the KOI was observed. Example: '1.11111E+31.">(i)</span></label><input step="any" type="text" id="koi_quarters" name="koi_quarters" placeholder="e.g., '1.11111E+31"></div>
+                        
+                        <div class="input-group"><label for="koi_bin_oedp_sig">Odd-Even Depth Comparison Statistic <span class="info-icon text-cyan-400" data-tooltip-content="Odd-Even Depth Comparison Statistic: Measure of the difference between odd and even transit depths, often suggesting an eclipsing binary. Example: 0.0065.">(i)</span></label><input step="any" type="number" id="koi_bin_oedp_sig" name="koi_bin_oedp_sig" placeholder="e.g., 0.0065"></div>
+                        
+                        <div class="input-group"><label for="koi_trans_mod">Transit Model <span class="info-icon text-cyan-400" data-tooltip-content="Transit Model: The physical model used to fit the transit light curve (e.g., Mandel and Agol (2002 ApJ 580 171)). Example: Mandel and Agol.">(i)</span></label><input step="any" type="text" id="koi_trans_mod" name="koi_trans_mod" placeholder="e.g., Mandel and Agol"></div>
+                        
+                        <div class="input-group"><label for="koi_datalink_dvr">Link to DV Report (DVR) <span class="info-icon text-cyan-400" data-tooltip-content="Link to DV Report (DVR): Path to the Data Validation Report PDF (partial link). Example: 010/010848/010848/dv/kplr_dvr.pdf.">(i)</span></label><input step="any" type="text" id="koi_datalink_dvr" name="koi_datalink_dvr" placeholder="e.g., 010/../kplr_dvr.pdf"></div>
+                        
+                        <div class="input-group"><label for="koi_datalink_dvs"> Link to DV Summary (DVS) <span class="info-icon text-cyan-400" data-tooltip-content="Link to DV Summary (DVS): Path to the Data Validation Summary PDF (partial link). Example: 010/010910/010910/dv/kplr_dvs.pdf.">(i)</span></label><input step="any" type="text" id="koi_datalink_dvs" name="koi_datalink_dvs" placeholder="e.g., 010/../kplr_dvs.pdf"></div>
+                        
+                        <div class="input-group"><label for="koi_steff">Stellar Effective Temperature [K] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Effective Temperature: The temperature of the star's surface [Kelvin (K)]. Example: 58554.">(i)</span></label><input step="any" type="number" id="koi_steff" name="koi_steff" placeholder="e.g., 58554" required></div>
+                        
+                        <div class="input-group"><label for="koi_steff_err1">Stellar Effective Temperature Upper Unc. [K] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Effective Temperature Upper Unc.: The +1 sigma uncertainty in the effective temperature [K]. Example: 84.">(i)</span></label><input step="any" type="number" id="koi_steff_err1" name="koi_steff_err1" placeholder="e.g., 84"></div>
+                        
+                        <div class="input-group"><label for="koi_steff_err2">Stellar Effective Temperature Lower Unc. [K] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Effective Temperature Lower Unc.: The -1 sigma uncertainty in the effective temperature [K]. Example: -211.">(i)</span></label><input step="any" type="number" id="koi_steff_err2" name="koi_steff_err2" placeholder="e.g., -211"></div>
+                        
+                        <div class="input-group"><label for="koi_slogg"> Stellar Surface Gravity [log10(cm/s²)] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Surface Gravity: The surface gravity of the star, measured as $\log_{10} g$ [log10(cm/s²)]. Example: 4.45.">(i)</span></label><input step="any" type="number" id="koi_slogg" name="koi_slogg" placeholder="e.g., 4.45" required></div>
+                        
+                        <div class="input-group"><label for="koi_slogg_err1">Stellar Surface Gravity Upper Unc. [log10(cm/s²)] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Surface Gravity Upper Unc.: The +1 sigma uncertainty in $\log_{10} g$ [log10(cm/s²)]. Example: 0.054.">(i)</span></label><input step="any" type="number" id="koi_slogg_err1" name="koi_slogg_err1" placeholder="e.g., 0.054"></div>
+                        
+                        <div class="input-group"><label for="koi_slogg_err2">Stellar Surface Gravity Lower Unc. [log10(cm/s²)] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Surface Gravity Lower Unc.: The -1 sigma uncertainty in $\log_{10} g$ [log10(cm/s²)]. Example: -0.047.">(i)</span></label><input step="any" type="number" id="koi_slogg_err2" name="koi_slogg_err2" placeholder="e.g., -0.047"></div>
+                        
+                        <div class="input-group"><label for="koi_smet"> Stellar Metallicity [dex] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Metallicity: The abundance of elements heavier than Helium [dex]. Example: 0.3.">(i)</span></label><input step="any" type="number" id="koi_smet" name="koi_smet" placeholder="e.g., 0.3"></div>
+                        
+                        <div class="input-group"><label for="koi_smet_err1"> Stellar Metallicity Upper Unc. [dex] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Metallicity Upper Unc.: The +1 sigma uncertainty in the stellar metallicity [dex]. Example: 0.04.">(i)</span></label><input step="any" type="number" id="koi_smet_err1" name="koi_smet_err1" placeholder="e.g., 0.04"></div>
+                        
+                        <div class="input-group"><label for="koi_smet_err2"> Stellar Metallicity Lower Unc. [dex] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Metallicity Lower Unc.: The -1 sigma uncertainty in the stellar metallicity [dex]. Example: -0.14.">(i)</span></label><input step="any" type="number" id="koi_smet_err2" name="koi_smet_err2" placeholder="e.g., -0.14"></div>
+                        
+                        <div class="input-group"><label for="koi_srad"> Stellar Radius [Solar radii] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Radius: The radius of the host star [Solar radii ($R_{Sun}$)]. Example: 0.94.">(i)</span></label><input step="any" type="number" id="koi_srad" name="koi_srad" placeholder="e.g., 0.94" required></div>
+                        
+                        <div class="input-group"><label for="koi_srad_err1"> Stellar Radius Upper Unc. [Solar radii] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Radius Upper Unc.: The +1 sigma uncertainty in the stellar radius [Solar radii]. Example: 0.223.">(i)</span></label><input step="any" type="number" id="koi_srad_err1" name="koi_srad_err1" placeholder="e.g., 0.223"></div>
+                        
+                        <div class="input-group"><label for="koi_srad_err2"> Stellar Radius Lower Unc. [Solar radii] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Radius Lower Unc.: The -1 sigma uncertainty in the stellar radius [Solar radii]. Example: -0.127.">(i)</span></label><input step="any" type="number" id="koi_srad_err2" name="koi_srad_err2" placeholder="e.g., -0.127"></div>
+                        
+                        <div class="input-group"><label for="koi_smass">Stellar Mass [Solar mass] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Mass: The mass of the host star [Solar masses ($M_{Sun}$)]. Example: 0.919.">(i)</span></label><input step="any" type="number" id="koi_smass" name="koi_smass" placeholder="e.g., 0.919" required></div>
+                        
+                        <div class="input-group"><label for="koi_smass_err1"> Stellar Mass Upper Unc. [Solar mass] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Mass Upper Unc.: The +1 sigma uncertainty in the stellar mass [Solar masses]. Example: 0.51.">(i)</span></label><input step="any" type="number" id="koi_smass_err1" name="koi_smass_err1" placeholder="e.g., 0.51"></div>
+                        
+                        <div class="input-group"><label for="koi_smass_err2">Stellar Mass Lower Unc. [Solar mass] <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Mass Lower Unc.: The -1 sigma uncertainty in the stellar mass [Solar masses]. Example: -0.047.">(i)</span></label><input step="any" type="number" id="koi_smass_err2" name="koi_smass_err2" placeholder="e.g., -0.047"></div>
+                        
+                        <div class="input-group"><label for="koi_sparprov"> Stellar Parameter Provenance <span class="info-icon text-cyan-400" data-tooltip-content="Stellar Parameter Provenance: Source of the stellar parameters (e.g., q1_q17_dr25_stellar). Example: q1_q17_dr25_stellar.">(i)</span></label><input step="any" type="text" id="koi_sparprov" name="koi_sparprov" placeholder="e.g., q1_q17_dr25_stellar"></div>
+                        
+                        <div class="input-group"><label for="ra"> Right Ascension (RA) [decimal deg] <span class="info-icon text-cyan-400" data-tooltip-content="Right Ascension (RA): The celestial longitude of the star [decimal degrees]. Example: 291.57441.">(i)</span></label><input step="any" type="number" id="ra" name="ra" placeholder="e.g., 291.57441" required></div>
+                        
+                        <div class="input-group"><label for="dec">Declination (Dec) [decimal deg] <span class="info-icon text-cyan-400" data-tooltip-content="Declination (Dec): The celestial latitude of the star [decimal degrees]. Example: 53.36997.">(i)</span></label><input step="any" type="number" id="dec" name="dec" placeholder="e.g., 53.36997" required></div>
+                        
+                        <div class="input-group"><label for="koi_kepmag">Kepler-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="Kepler-band Magnitude: The brightness of the star in the Kepler filter band [magnitude (mag)]. Example: 15.36.">(i)</span></label><input step="any" type="number" id="koi_kepmag" name="koi_kepmag" placeholder="e.g., 15.36" required></div>
+                        
+                        <div class="input-group"><label for="koi_gmag"> g'-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="g'-band Magnitude: The brightness of the star in the g' filter band [magnitude (mag)]. Example: 14.368.">(i)</span></label><input step="any" type="number" id="koi_gmag" name="koi_gmag" placeholder="e.g., 14.368"></div>
+                        
+                        <div class="input-group"><label for="koi_rmag"> r'-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="r'-band Magnitude: The brightness of the star in the r' filter band [magnitude (mag)]. Example: 15.33.">(i)</span></label><input step="any" type="number" id="koi_rmag" name="koi_rmag" placeholder="e.g., 15.33"></div>
+                        
+                        <div class="input-group"><label for="koi_imag">i'-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="i'-band Magnitude: The brightness of the star in the i' filter band [magnitude (mag)]. Example: 17.3.">(i)</span></label><input step="any" type="number" id="koi_imag" name="koi_imag" placeholder="e.g., 17.3"></div>
+                        
+                        <div class="input-group"><label for="koi_zmag">z'-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="z'-band Magnitude: The brightness of the star in the z' filter band [magnitude (mag)]. Example: 14.99.">(i)</span></label><input step="any" type="number" id="koi_zmag" name="koi_zmag" placeholder="e.g., 14.99"></div>
+                        
+                        <div class="input-group"><label for="koi_jmag">J-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="J-band Magnitude: The brightness of the star in the J filter band [magnitude (mag)]. Example: 9.6.">(i)</span></label><input step="any" type="number" id="koi_jmag" name="koi_jmag" placeholder="e.g., 9.6"></div>
+                        
+                        <div class="input-group"><label for="koi_hmag">H-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="H-band Magnitude: The brightness of the star in the H filter band [magnitude (mag)]. Example: 13.55.">(i)</span></label><input step="any" type="number" id="koi_hmag" name="koi_hmag" placeholder="e.g., 13.55"></div>
+                        
+                        <div class="input-group"><label for="koi_kmag">K-band Magnitude [mag] <span class="info-icon text-cyan-400" data-tooltip-content="K-band Magnitude: The brightness of the star in the K filter band [magnitude (mag)]. Example: 13.889.">(i)</span></label><input step="any" type="number" id="koi_kmag" name="koi_kmag" placeholder="e.g., 13.889"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_stat_sig">FW Offset Significance [percent] <span class="info-icon text-cyan-400" data-tooltip-content="FW Offset Significance [percent]: Significance (percentage) of the flux-weighted centroid offset test (FW), used tovaluate whether transit signal centroid shifts indicate a background source or the target star.">(i)</span></label><input step="any" type="number" id="koi_fwm_stat_sig" name="koi_fwm_stat_sig" placeholder="e.g., 0.72"></div>
+                                                
+                        <div class="input-group"><label for="koi_fwm_sra">  FW Source α(OOT) [hrs] <span class="info-icon text-cyan-400" data-tooltip-content=" FW Source α(OOT) [hrs]: The Right Ascension of the flux-weighted source out-of-transit [hours]. Example: 19.2503258.">(i)</span></label><input step="any" type="number" id="koi_fwm_sra" name="koi_fwm_sra" placeholder="e.g., 19.2503258"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_sra_err">FW Source α(OOT) Unc. [hrs] <span class="info-icon text-cyan-400" data-tooltip-content="FW Source α(OOT) Unc. [hrs]: Uncertainty in the FW Source Right Ascension out-of-transit [hours]. Example: 0.000067.">(i)</span></label><input step="any" type="number" id="koi_fwm_sra_err" name="koi_fwm_sra_err" placeholder="e.g., 0.000067"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_sdec"> FW Source δ(OOT) [deg] <span class="info-icon text-cyan-400" data-tooltip-content=" FW Source δ(OOT) [deg]: The Declination of the flux-weighted source out-of-transit [degrees]. Example: 48.369.">(i)</span></label><input step="any" type="number" id="koi_fwm_sdec" name="koi_fwm_sdec" placeholder="e.g., 48.369"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_sdec_err"> FW Source δ(OOT) Unc. [deg] <span class="info-icon text-cyan-400" data-tooltip-content=" FW Source δ(OOT) Unc. [deg]: Uncertainty in the FW Source Declination out-of-transit [degrees]. Example: 0.000087.">(i)</span></label><input step="any" type="number" id="koi_fwm_sdec_err" name="koi_fwm_sdec_err" placeholder="e.g., 0.000087"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_srao"> FW Source Δα(OOT) [sec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Source Δα(OOT) [sec]: Right Ascension difference between the flux-weighted source and the KIC position out-of-transit [arcseconds]. Example: -0.41.">(i)</span></label><input step="any" type="number" id="koi_fwm_srao" name="koi_fwm_srao" placeholder="e.g., -0.41"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_srao_err"> FW Source Δα(OOT) Unc. [sec] <span class="info-icon text-cyan-400" data-tooltip-content=" FW Source Δα(OOT) Unc. [sec]: Uncertainty in the FW Source $\Delta\alpha$ out-of-transit [arcseconds]. Example: 0.35.">(i)</span></label><input step="any" type="number" id="koi_fwm_srao_err" name="koi_fwm_srao_err" placeholder="e.g., 0.35"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_sdeco">FW Source Δδ(OOT) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Source Δδ(OOT) [arcsec]: Declination difference between the flux-weighted source and the KIC position out-of-transit [arcseconds]. Example: 0.94.">(i)</span></label><input step="any" type="number" id="koi_fwm_sdeco" name="koi_fwm_sdeco" placeholder="e.g., 0.94"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_sdeco_err">FW Source Δδ(OOT) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Source Δδ(OOT) Unc. [arcsec]: Uncertainty in the FW Source $\Delta\delta$ out-of-transit [arcseconds]. Example: 0.48.">(i)</span></label><input step="any" type="number" id="koi_fwm_sdeco_err" name="koi_fwm_sdeco_err" placeholder="e.g., 0.48"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_prao">FW Δα(OOT) [sec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Δα(OOT) [sec]: Difference between the flux-weighted centroid during transit and out-of-transit in RA [arcseconds]. Example: -0.0000016.">(i)</span></label><input step="any" type="number" id="koi_fwm_prao" name="koi_fwm_prao" placeholder="e.g., -0.0000016"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_prao_err"> FW Δα(OOT) Unc. [sec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Δα(OOT) Unc. [sec]: Uncertainty in the FW $\Delta\alpha$ (transit minus out-of-transit) for Right Ascension [arcseconds]. Example: -0.0004.">(i)</span></label><input step="any" type="number" id="koi_fwm_prao_err" name="koi_fwm_prao_err" placeholder="e.g., -0.0004"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_pdeco"> FW Δδ(OOT) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Δδ(OOT) [arcsec]: Difference between the flux-weighted centroid during transit and out-of-transit in Declination [arcseconds]. Example: 0.0006.">(i)</span></label><input step="any" type="number" id="koi_fwm_pdeco" name="koi_fwm_pdeco" placeholder="e.g., 0.0006"></div>
+                        
+                        <div class="input-group"><label for="koi_fwm_pdeco_err"> FW Δδ(OOT) Unc.[arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="FW Δδ(OOT) Unc.[arcsec]: Uncertainty in the FW $\Delta\delta$ (transit minus out-of-transit) for Declination [arcseconds]. Example: -0.00018.">(i)</span></label><input step="any" type="number" id="koi_fwm_pdeco_err" name="koi_fwm_pdeco_err" placeholder="e.g., -0.00018"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_mra">PRF Δαₛ₍Q₎(OOT) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δαₛ₍Q₎(OOT) [arcsec]: PRF-Centroid $\Delta\alpha$ for the source in the current Quarter (Q) relative to the KIC position out-of-transit [arcseconds]. Example: 0.01.">(i)</span></label><input step="any" type="number" id="koi_dicco_mra" name="koi_dicco_mra" placeholder="e.g., 0.01"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_mra_err">PRF Δαₛ₍Q₎(OOT) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δαₛ₍Q₎(OOT) Unc. [arcsec]: Uncertainty in the PRF-Centroid $\Delta\alpha$ relative to the KIC position out-of-transit [arcseconds]. Example: -4.5.">(i)</span></label><input step="any" type="number" id="koi_dicco_mra_err" name="koi_dicco_mra_err" placeholder="e.g., -4.5"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_mdec">PRF Δδₛ₍Q₎(OOT)  [arcsec] (0.014) <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δδₛ₍Q₎(OOT)  [arcsec] (0.014): PRF-Centroid $\Delta\delta$ for the source in the current Quarter (Q) relative to the KIC position out-of-transit [arcseconds]. Example: 0.014.">(i)</span></label><input step="any" type="number" id="koi_dicco_mdec" name="koi_dicco_mdec" placeholder="e.g., 0.014"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_mdec_err">PRF Δδₛ₍Q₎(OOT) Unc.[arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δδₛ₍Q₎(OOT) Unc.[arcsec]: Uncertainty in the PRF-Centroid $\Delta\delta$ relative to the KIC position out-of-transit [arcseconds]. Example: -0.05.">(i)</span></label><input step="any" type="number" id="koi_dicco_mdec_err" name="koi_dicco_mdec_err" placeholder="e.g., -0.05"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_msky">PRF Δθₛ₍Q₎(OOT) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δθₛ₍Q₎(OOT) [arcsec]: PRF-Centroid $\Delta\theta$ (sky distance) for the source in the current Quarter (Q) relative to the KIC position out-of-transit [arcseconds]. Example: 0.2.">(i)</span></label><input step="any" type="number" id="koi_dicco_msky" name="koi_dicco_msky" placeholder="e.g., 0.2"></div>
+                        
+                        <div class="input-group"><label for="koi_dicco_msky_err">PRF Δθₛ₍Q₎(OOT) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δθₛ₍Q₎(OOT) Unc. [arcsec] : Uncertainty in the PRF-Centroid $\Delta\theta$ (sky distance) relative to the KIC position out-of-transit [arcseconds]. Example: 0.17.">(i)</span></label><input step="any" type="number" id="koi_dicco_msky_err" name="koi_dicco_msky_err" placeholder="e.g., 0.17"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_mra"> PRF Δαₛ₍Q₎(KIC) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content=" PRF Δαₛ₍Q₎(KIC) [arcsec] : PRF-Centroid $\Delta\alpha$ for the source in the current Quarter (Q) relative to the full KIC position [arcseconds]. Example: 0.57.">(i)</span></label><input step="any" type="number" id="koi_dikco_mra" name="koi_dikco_mra" placeholder="e.g., 0.57"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_mra_err"> PRF Δαₛ₍Q₎(KIC) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δαₛ₍Q₎(KIC) Unc. [arcsec]: Uncertainty in the PRF-Centroid $\Delta\alpha$ relative to the KIC position [arcseconds]. Example: 0.9547.">(i)</span></label><input step="any" type="number" id="koi_dikco_mra_err" name="koi_dikco_mra_err" placeholder="e.g., 0.9547"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_mdec">PRF Δδₛ₍Q₎(KIC) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δδₛ₍Q₎(KIC) [arcsec] : PRF-Centroid $\Delta\delta$ for the source in the current Quarter (Q) relative to the full KIC position [arcseconds]. Example: 7.22.">(i)</span></label><input step="any" type="number" id="koi_dikco_mdec" name="koi_dikco_mdec" placeholder="e.g., 7.22"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_mdec_err">PRF Δδₛ₍Q₎(KIC) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δδₛ₍Q₎(KIC) Unc. [arcsec] : Uncertainty in the PRF-Centroid $\Delta\delta$ relative to the KIC position [arcseconds]. Example: 0.73.">(i)</span></label><input step="any" type="number" id="koi_dikco_mdec_err" name="koi_dikco_mdec_err" placeholder="e.g., 0.73"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_msky">PRF Δθₛ₍Q₎(KIC) [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δθₛ₍Q₎(KIC) [arcsec]: PRF-Centroid $\Delta\theta$ (sky distance) for the source in the current Quarter (Q) relative to the KIC position [arcseconds]. Example: 0.07.">(i)</span></label><input step="any" type="number" id="koi_dikco_msky" name="koi_dikco_msky" placeholder="e.g., 0.07"></div>
+                        
+                        <div class="input-group"><label for="koi_dikco_msky_err">PRF Δθₛ₍Q₎(KIC) Unc. [arcsec] <span class="info-icon text-cyan-400" data-tooltip-content="PRF Δθₛ₍Q₎(KIC) Unc. [arcsec]: Uncertainty in the PRF-Centroid $\Delta\theta$ (sky distance) relative to the KIC position [arcseconds]. Example: 0.016.">(i)</span></label><input step="any" type="number" id="koi_dikco_msky_err" name="koi_dikco_msky_err" placeholder="e.g., 0.016"></div>
+                    </div>
+                </section>
+
+                <div class="flex justify-center mt-12 mb-10">
+                    <button type="submit" 
+                            class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 px-12 rounded-full uppercase tracking-widest text-xl transition duration-300 transform hover:scale-[1.03] neon-glow focus:outline-none focus:ring-4 focus:ring-cyan-500">
+                        Predict Exoplanet Classification
+                    </button>
+                </div>
+            </form>
+        </main>
+        <footer class="text-center mt-12 pt-4 border-t border-gray-800">
+            <p class="text-sm text-gray-600 neon-text">Kepler KOI AI Prediction System | 116 Parameters</p>
+        </footer>
+    </div>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'nasa-dark': '#0d1117',
+                        'nasa-blue': '#00FFFF',
+                        'nasa-orange': '#FFA500',
+                    }
+                }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('mission-data-form');
+            const requiredInputs = form.querySelectorAll('[required]');
+            
+            document.querySelectorAll('.input-group input, .input-group select').forEach(input => {
+                input.classList.add('w-full', 'p-4', 'text-lg', 'rounded-lg', 'focus:ring-4', 'focus:ring-nasa-blue', 'transition', 'duration-200', 'border-gray-700', 'border');
+            });
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault(); 
+                let allValid = true;
+                const formData = new FormData(form);
+                const exoplanetData = {};
+                
+                requiredInputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        input.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        allValid = false;
+                    } else {
+                        input.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+                    }
+                });
+                
+                if (!allValid) {
+                    alertModal("Validation Failed", "Please fill in all required fields.");
+                    return;
+                }
+                
+                // Collect form data
+                for (const [key, value] of formData.entries()) {
+                    const inputElement = form.querySelector(`[name="${key}"]`);
+                    const isNumeric = inputElement.type === 'number';
+                    exoplanetData[key] = isNumeric && value ? parseFloat(value) : value;
+                }
+                
+                // Show loading message
+                const submitBtn = document.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '  <span class="loading"></span> Processing...';
+                
+                try {
+                    // Send to Flask backend
+                    const response = await fetch('http://localhost:5000/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(exoplanetData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        // Display results
+                        displayResults(result);
+                        alertModal("Prediction Complete", `Classification: ${result.prediction}`);
+                    } else {
+                        alertModal("Error", result.error || "Prediction failed");
+                    }
+                } catch (error) {
+                    alertModal("Connection Error", "Could not connect to prediction server. Make sure Flask is running on http://localhost:5000");
+                    console.error(error);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            });
+
+            // Function to display results
+            function displayResults(result) {
+                const resultsSection = document.getElementById('results-section');
+                const resultsContent = document.getElementById('results-content');
+                
+                let probsHTML = '<div class="space-y-2 mt-4">';
+                for (const [cls, prob] of Object.entries(result.probabilities)) {
+                    const percentage = (prob * 100).toFixed(2);
+                    const barWidth = percentage;
+                    probsHTML += `
+                        <div class="p-3 bg-[#0d1117] rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                  <span class="font-semibold">${cls}</span>
+                                  <span class="text-cyan-400">${percentage}%</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div class="bg-cyan-500 h-2 rounded-full transition-all duration-500" style="width: ${barWidth}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                probsHTML += '</div>';
+                
+                resultsContent.innerHTML = `
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold text-orange-400 mb-2">Classification</h3>
+                        <p class="text-4xl font-bold text-cyan-400">${result.prediction}</p>
+                    </div>
+                    <h4 class="text-xl font-semibold text-gray-300 mb-3">Confidence Scores</h4>
+                    ${probsHTML}
+                `;
+                
+                resultsSection.classList.remove('hidden');
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            function alertModal(title, message) {
+                const existingModal = document.getElementById('custom-alert-modal');
+                if (existingModal) existingModal.remove();
+                const modal = document.createElement('div');
+                modal.id = 'custom-alert-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 transition-opacity duration-300';
+                modal.innerHTML = `
+                    <div class="bg-nasa-dark p-8 rounded-xl max-w-sm w-full border-2 border-cyan-500 neon-glow relative text-left" dir="ltr">
+                        <h3 class="text-3xl font-bold mb-4 text-nasa-blue">${title}</h3>
+                        <p class="text-gray-300 mb-6">${message}</p>
+                        <button id="close-modal" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 rounded-lg transition duration-200">
+                            Close
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                document.getElementById('close-modal').addEventListener('click', () => {
+                    modal.remove();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
